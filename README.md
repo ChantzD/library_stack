@@ -2,9 +2,10 @@
 Book stacking minigame for the library game
 
 # Todo
-- [ ] Destroy books on contact with ground
+- [X] Destroy books on contact with ground
 - [ ] Make return zone
 - [ ] Keep score
+- [ ] Bound platform
 - [ ] Load in assets
 
 # Idea Bank

@@ -1,6 +1,7 @@
 function love.load()
 	love.physics.setMeter(64)
 	world = love.physics.newWorld(0, 9.81 * 64, true)
+	world:setCallbacks(beginContact, endContact)
 
 	objects = {}
 	objects.books = {}
@@ -16,11 +17,13 @@ function love.load()
 	objects.ground.shape = love.physics.newRectangleShape(650, 50)
 	objects.ground.fixture = love.physics.newFixture(objects.ground.body, objects.ground.shape)
 	objects.ground.fixture:setFriction(0.1)
+	objects.ground.fixture:setUserData("ground")
 
 	objects.platform = {}
 	objects.platform.body = love.physics.newBody(world, 650 / 2, 625, "dynamic")
 	objects.platform.shape = love.physics.newRectangleShape(300, 25)
 	objects.platform.fixture = love.physics.newFixture(objects.platform.body, objects.platform.shape)
+	objects.platform.fixture:setUserData("platform")
 
 	love.graphics.setBackgroundColor(0.41, 0.53, 0.97)
 	love.window.setMode(650, 650)
@@ -66,42 +69,23 @@ function love.draw()
 	end
 end
 
-function love.beginContact(a, b, contact)
-	print("HIT")
-	if isPlatformOrBook(a) then
-		table.insert(safe, b:getBody())
-	elseif isPlatformOrBook(b) then
-		table.insert(safe, a:getBody())
-	elseif a == objects.ground.fixture then
+function beginContact(a, b, contact)
+	local aType = a:getUserData()
+	local bType = b:getUserData()
+
+	if aType == "ground" and bType ~= "platform" then
 		markForDestruction(b:getBody())
-	elseif b == objects.ground.fixture then
+	elseif bType == "ground" and aType ~= "platform" then
 		markForDestruction(a:getBody())
 	end
 end
 
-function love.endContact(a, b, contact)
-	print("DESTROY")
+function endContact(a, b, contact)
 	if a == objects.ground.fixture then
-		print("DESTROY")
 		markForDestruction(b:getBody())
 	elseif b == objects.ground.fixture then
-		print("DESTROY")
 		markForDestruction(a:getBody())
 	end
-end
-
-function isPlatformOrBook(fixture)
-	if fixture == objects.platform.fixture then
-		return true
-	end
-
-	local userdata = fixture:getUserData()
-	if userdata then
-		-- It's one of our books
-		return true
-	end
-
-	return false
 end
 
 function removeBodyFromSafe(body)
@@ -140,6 +124,6 @@ function SpawnBook()
 	book.fixture:setFriction(10)
 	book.fixture:setDensity(0.2)
 	book.is_falling = true
-	book.fixture:setUserData(book)
+	book.fixture:setUserData("book")
 	table.insert(objects.books, book)
 end
