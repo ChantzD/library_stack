@@ -25,6 +25,13 @@ function love.load()
 	objects.platform.fixture = love.physics.newFixture(objects.platform.body, objects.platform.shape)
 	objects.platform.fixture:setUserData("platform")
 
+	objects.safeZone = {}
+	objects.safeZone.body = love.physics.newBody(world, 0, 650 / 2, "static")
+	objects.safeZone.shape = love.physics.newRectangleShape(50, 650)
+	objects.safeZone.fixture = love.physics.newFixture(objects.safeZone.body, objects.safeZone.shape, 0)
+	objects.safeZone.fixture:setSensor(true)
+	objects.safeZone.fixture:setUserData("safeZone")
+
 	love.graphics.setBackgroundColor(0.41, 0.53, 0.97)
 	love.window.setMode(650, 650)
 end
@@ -67,6 +74,9 @@ function love.draw()
 		love.graphics.setColor(1, 1, 1)
 		love.graphics.polygon("fill", book.body:getWorldPoints(book.shape:getPoints()))
 	end
+
+	love.graphics.setColor(0, 1, 0, 0.3)
+	love.graphics.polygon("fill", objects.safeZone.body:getWorldPoints(objects.safeZone.shape:getPoints()))
 end
 
 function beginContact(a, b, contact)
@@ -77,6 +87,20 @@ function beginContact(a, b, contact)
 		markForDestruction(b:getBody())
 	elseif bType == "ground" and aType ~= "platform" then
 		markForDestruction(a:getBody())
+	elseif aType == "platform" and bType == "safeZone" then
+		print("SAFE!")
+		returnBooks()
+	elseif bType == "platform" and aType == "safeZone" then
+		print("SAFE!")
+		returnBooks()
+	end
+end
+
+function returnBooks()
+	for i, body in ipairs(safe) do
+		if body:isDestroyed() == false then
+			body:destroy()
+		end
 	end
 end
 
