@@ -1,153 +1,103 @@
+-- Main entry point file
+local GameWorld = require("world")
+local BookManager = require("bookManager")
+local Platform = require("platform")
+local Ground = require("ground")
+local SafeZone = require("safeZone")
+local ScoreManager = require("scoreManager")
+
+-- Global game state
+local world
+local bookManager
+local platform
+local ground
+local safeZone
+local scoreManager
+
 function love.load()
+	-- Initialize physics world
 	love.physics.setMeter(64)
-	world = love.physics.newWorld(0, 9.81 * 64, true)
-	world:setCallbacks(beginContact, endContact)
+	world = GameWorld.create(0, 9.81 * 64)
 
-	objects = {}
-	objects.books = {}
-	safe = {}
-	bodiesToDestroy = {}
-	timer = 0
-	spawn_interval = 2
-	platform_force = 12345
-	score = 0
+	-- Initialize game components
+	ground = Ground.create(world)
+	platform = Platform.create(world)
+	safeZone = SafeZone.create(world)
+	bookManager = BookManager.create(world)
+	scoreManager = ScoreManager.create()
 
-	objects.ground = {}
-	objects.ground.body = love.physics.newBody(world, 650 / 2, 674)
-	objects.ground.shape = love.physics.newRectangleShape(650, 50)
-	objects.ground.fixture = love.physics.newFixture(objects.ground.body, objects.ground.shape)
-	objects.ground.fixture:setFriction(0.1)
-	objects.ground.fixture:setUserData("ground")
-
-	objects.platform = {}
-	objects.platform.body = love.physics.newBody(world, 650 / 2, 625, "dynamic")
-	objects.platform.shape = love.physics.newRectangleShape(300, 25)
-	objects.platform.fixture = love.physics.newFixture(objects.platform.body, objects.platform.shape)
-	objects.platform.fixture:setUserData("platform")
-
-	objects.safeZone = {}
-	objects.safeZone.body = love.physics.newBody(world, 0, 650 / 2, "static")
-	objects.safeZone.shape = love.physics.newRectangleShape(50, 650)
-	objects.safeZone.fixture = love.physics.newFixture(objects.safeZone.body, objects.safeZone.shape, 0)
-	objects.safeZone.fixture:setSensor(true)
-	objects.safeZone.fixture:setUserData("safeZone")
-
+	-- Set window properties
 	love.graphics.setBackgroundColor(0.41, 0.53, 0.97)
-	love.window.setMode(650, 650)
 end
 
 function love.update(dt)
 	world:update(dt)
 
-	timer = timer + dt
-	if timer >= spawn_interval then
-		SpawnBook()
-		timer = 0
-	end
+	-- Update components
+	platform:update(dt)
+	bookManager:update(dt)
 
-	if love.keyboard.isDown("right") then
-		objects.platform.body:applyForce(1000, 0)
-	elseif love.keyboard.isDown("left") then
-		objects.platform.body:applyForce(-1000, 0)
-	elseif love.keyboard.isDown("escape") then
-		love.event.quit()
-	end
-
-	-- Destroy after physics update
-	for _, body in ipairs(bodiesToDestroy) do
-		if body:isDestroyed() == false then
-			body:destroy()
-		end
-	end
-	bodiesToDestroy = {} -- clear list after destruction
+	-- We now handle scoring in the beginContact callback
+	-- for more immediate and accurate response
 end
 
 function love.draw()
-	love.graphics.setColor(0.28, 0.63, 0.05)
-	love.graphics.polygon("fill", objects.ground.body:getWorldPoints(objects.ground.shape:getPoints()))
-
-	love.graphics.setColor(0.28, 0.28, 0.28)
-	love.graphics.polygon("fill", objects.platform.body:getWorldPoints(objects.platform.shape:getPoints()))
-
-	for i = #objects.books, 1, -1 do
-		local book = objects.books[i]
-		love.graphics.setColor(1, 1, 1)
-		love.graphics.polygon("fill", book.body:getWorldPoints(book.shape:getPoints()))
-	end
-
-	love.graphics.setColor(0, 1, 0, 0.3)
-	love.graphics.polygon("fill", objects.safeZone.body:getWorldPoints(objects.safeZone.shape:getPoints()))
+	-- Draw all game components
+	ground:draw()
+	platform:draw()
+	safeZone:draw()
+	bookManager:draw()
+	scoreManager:draw()
 end
 
-function beginContact(a, b, contact)
-	local aType = a:getUserData()
-	local bType = b:getUserData()
-
-	if aType == "ground" and bType ~= "platform" then
-		markForDestruction(b:getBody())
-	elseif bType == "ground" and aType ~= "platform" then
-		markForDestruction(a:getBody())
-	elseif aType == "platform" and bType == "safeZone" then
-		print("SAFE!")
-		returnBooks()
-	elseif bType == "platform" and aType == "safeZone" then
-		print("SAFE!")
-		returnBooks()
+function love.keypressed(key)
+	if key == "escape" then
+		love.event.quit()
 	end
 end
 
-function returnBooks()
-	for i, body in ipairs(safe) do
-		if body:isDestroyed() == false then
-			body:destroy()
+-- Physics collision callbacks
+function beginContact(a, b, coll)
+	local aData = a:getUserData()
+	local bData = b:getUserData()
+
+	-- Handle book-platform collision
+	if (aData == "book" and bData == "platform") or (bData == "book" and aData == "platform") then
+		local bookFixture = aData == "book" and a or b
+		bookManager:markBookSaved(bookFixture:getBody())
+	end
+
+	-- Handle book-ground collision
+	if (aData == "book" and bData == "ground") or (bData == "book" and aData == "ground") then
+		local bookFixture = aData == "book" and a or b
+		bookManager:markBookForDeletion(bookFixture:getBody())
+	end
+
+	-- Handle platform-safezone collision
+	if (aData == "platform" and bData == "safeZone") or (bData == "platform" and aData == "safeZone") then
+		platform:setInSafeZone(true)
+
+		-- Score and clear books immediately when entering safe zone
+		local bookCount = bookManager:countSavedBooks()
+		if bookCount > 0 then
+			scoreManager:addScore(bookCount)
+			bookManager:clearSavedBooks()
 		end
 	end
-end
 
-function endContact(a, b, contact)
-	if a == objects.ground.fixture then
-		markForDestruction(b:getBody())
-	elseif b == objects.ground.fixture then
-		markForDestruction(a:getBody())
+	-- Handle book-book collision
+	if aData == "book" and bData == "book" then
+		bookManager:markBookSaved(a:getBody())
+		bookManager:markBookSaved(b:getBody())
 	end
 end
 
-function removeBodyFromSafe(body)
-	for i = #safe, 1, -1 do
-		if safe[i] == body then
-			table.remove(safe, i)
-			return
-		end
+function endContact(a, b, coll)
+	local aData = a:getUserData()
+	local bData = b:getUserData()
+
+	-- Handle platform leaving safezone
+	if (aData == "platform" and bData == "safeZone") or (bData == "platform" and aData == "safeZone") then
+		platform:setInSafeZone(false)
 	end
-end
-
-function markForDestruction(body)
-	if body:isDestroyed() == false then
-		table.insert(bodiesToDestroy, body)
-
-		-- Remove from objects.books
-		for i = #objects.books, 1, -1 do
-			if objects.books[i].body == body then
-				table.remove(objects.books, i)
-				break
-			end
-		end
-	end
-end
-
--- TODO: Add random spawn location
-function SpawnBook()
-	local x = love.math.random(50, 600)
-	local y = -50
-	local size_x = love.math.random(50, 130)
-	local size_y = love.math.random(10, 40)
-	local book = {}
-	book.body = love.physics.newBody(world, x, y, "dynamic")
-	book.shape = love.physics.newRectangleShape(size_x, size_y)
-	book.fixture = love.physics.newFixture(book.body, book.shape)
-	book.fixture:setFriction(10)
-	book.fixture:setDensity(0.2)
-	book.is_falling = true
-	book.fixture:setUserData("book")
-	table.insert(objects.books, book)
 end

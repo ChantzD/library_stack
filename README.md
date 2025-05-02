@@ -13,3 +13,4 @@ Book stacking minigame for the library game
 - Lighter Books
 - More Speed
 - Larger cart?
+- More points for larger books?
