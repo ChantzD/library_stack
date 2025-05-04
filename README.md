@@ -3,10 +3,10 @@ Book stacking minigame for the library game
 
 # Dev TODO
 - [X] Destroy books on contact with ground
-- [ ] Make return zone
-- [ ] Keep score
-- [ ] Bound platform
-- [ ] Load in assets
+- [X] Make return zone
+- [X] Keep score
+- [X] Bound platform
+- [X] Load in assets
 
 # Design TODO
 - [ ] Design Books
