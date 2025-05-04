@@ -5,6 +5,7 @@ local Platform = require("platform")
 local Ground = require("ground")
 local SafeZone = require("safeZone")
 local ScoreManager = require("scoreManager")
+local Boundary = require("boundary")
 
 -- Global game state
 local world
@@ -13,6 +14,8 @@ local platform
 local ground
 local safeZone
 local scoreManager
+local boundaryLeft
+local boundaryRight
 
 function love.load()
 	-- Initialize physics world
@@ -25,6 +28,8 @@ function love.load()
 	safeZone = SafeZone.create(world)
 	bookManager = BookManager.create(world)
 	scoreManager = ScoreManager.create()
+	boundaryLeft = Boundary.create(world, -200, 325)
+	boundaryRight = Boundary.create(world, 850, 325)
 
 	-- Set window properties
 	love.graphics.setBackgroundColor(0.41, 0.53, 0.97)
@@ -48,6 +53,8 @@ function love.draw()
 	safeZone:draw()
 	bookManager:draw()
 	scoreManager:draw()
+	boundaryLeft:draw()
+	boundaryRight:draw()
 end
 
 function love.keypressed(key)

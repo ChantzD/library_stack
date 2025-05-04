@@ -10,7 +10,7 @@ function Platform.create(world)
 
 	-- Create physical body
 	self.body = love.physics.newBody(world, 650 / 2, 625, "dynamic")
-	self.shape = love.physics.newRectangleShape(300, 25)
+	self.shape = love.physics.newRectangleShape(200, 25)
 	self.fixture = love.physics.newFixture(self.body, self.shape)
 	self.fixture:setUserData("platform")
 

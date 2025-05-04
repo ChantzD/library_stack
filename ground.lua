@@ -8,7 +8,7 @@ function Ground.create(world)
 
 	-- Create physical body
 	self.body = love.physics.newBody(world, 650 / 2, 674)
-	self.shape = love.physics.newRectangleShape(650, 50)
+	self.shape = love.physics.newRectangleShape(1000, 50)
 	self.fixture = love.physics.newFixture(self.body, self.shape)
 	self.fixture:setFriction(0.1)
 	self.fixture:setUserData("ground")
